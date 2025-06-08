@@ -10,29 +10,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allowed frontend origins (add more if needed)
-const allowedOrigins = ['https://gym-frontend-hrn1.onrender.com'];
-
-// CORS configuration
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like Postman or curl)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-      return callback(new Error(msg), false);
-    }
-
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+// CORS config: allow only your frontend
+const corsOptions = {
+  origin: 'https://gym-frontend-hrn1.onrender.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-}));
+};
 
-// Enable pre-flight OPTIONS request for all routes
-app.options('*', cors());
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -52,8 +38,12 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("Global error handler:", err.message);
+  if (err instanceof Error && err.message.startsWith('The CORS policy')) {
+    return res.status(403).json({ message: err.message });
+  }
   res.status(500).json({ message: "Server error" });
+  next(err);
 });
 
 // Connect to MongoDB and start server
